@@ -1,0 +1,53 @@
+---
+title: "Project2"
+author: "Jackson Dial"
+date: "1/19/2022"
+output: word_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readxl)
+```
+
+```{r}
+dat <- read_xls("Proj2_Team2.xls")
+```
+
+
+## EDA
+
+```{r}
+levels(as.factor(dat$doctor)) # good
+levels(as.factor(dat$SEX)) # good
+levels(as.factor(dat$race)) # good
+levels(as.factor(dat$education)) # good
+levels(as.factor(dat$mstat)) # good
+levels(as.factor(dat$arthritis)) # has 0 when only 1 & 2 are defined
+table(dat$arthritis)
+levels(as.factor(dat$backpain)) # has 0
+table(dat$backpain)
+levels(as.factor(dat$heartprob)) # has 0 when only 1 & 2 are defined
+table(dat$heartprob)
+
+levels(as.factor(dat$stroke)) # has 0 when only 1 & 2 are defined
+table(dat$stroke)
+
+levels(as.factor(dat$hbp)) # has 0 when only 1 & 2 are defined
+table(dat$hbp)
+
+levels(as.factor(dat$diabetes)) # has 0 when only 1 & 2 are defined
+table(dat$diabetes)
+
+levels(as.factor(dat$lungprob)) # has 0 when only 1 & 2 are defined
+table(dat$lungprob)
+
+
+
+```
+
