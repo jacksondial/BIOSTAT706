@@ -1,0 +1,73 @@
+---
+title: "Midterm"
+author: "Jackson Dial"
+date: "2/28/2022"
+output: word_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(tidyselect)
+library(readxl)
+```
+
+```{r}
+dat1 <- read_csv("Project1/BigCitiesHealth.csv")
+```
+
+```{r}
+#Transpose the data
+dat_t <- reshape(dat1, timevar = "metric_item_label", idvar = c('geo_label_city', 'date_label'), times = 'value', direction="wide")
+
+#select only variables I want
+
+test <- dat_t[,grep("^[value.]", names(dat_t), value=TRUE)]
+
+testtv <- dat_t %>%
+  select(vars_select(names(dat_t), starts_with(c('value.', 'geo_label_city'), ignore.case = TRUE)))
+```
+
+```{r}
+# start looking at na values
+sum(is.na(testtv)) / 201 / 300 # approximately 11 percent of our data is missing, higher than I hoped
+
+View(testtv %>% select(`geo_label_citystate.Teen Obesity`, `value.Teen Obesity`))
+
+sum(is.na(testtv %>% select(`geo_label_citystate.Teen Obesity`, `value.Teen Obesity`))) #200
+sum(is.na(testtv %>% select(`geo_label_citystate.Teen Obesity`))) #100
+sum(is.na(testtv %>% select(`value.Teen Obesity`))) #100
+#This means that when we have a missing value in the state column, the measured value is also missing, at least for the Teen Obesity variable. I think I may just assume that this is true for all metrics.
+
+sum(is.na(testtv %>% select(`geo_label_citystate.Weapons in School`, `value.Weapons in School`))) #240
+sum(is.na(testtv %>% select(`geo_label_citystate.Weapons in School`))) #120
+sum(is.na(testtv %>% select(`value.Weapons in School`))) #120
+#I went ahead and did this comparison for another variable, which supports my assumption that if a variables location is missing, so is the actually measured metric. No imputation should be used.
+```
+
+```{r}
+#Read in the altitude data
+altitude <- read_xlsx("Project1/Top50CitiesElevation.xlsx")
+
+altitude %>% mutate(new_low = case_when(
+  `Corrected Low Feet` == "Sea Level" ~ 0,
+  TRUE ~ `Corrected Low Feet`
+))
+```
+
+```{r}
+#Select the specific vars that I actually want to examine in the analysis
+
+```
+
+
+
+
+
+
+
