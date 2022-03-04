@@ -25,12 +25,14 @@ dat1 <- read_csv("Project1/BigCitiesHealth.csv")
 #Transpose the data
 dat_t <- reshape(dat1, timevar = "metric_item_label", idvar = c('geo_label_city', 'date_label'), times = 'value', direction="wide")
 
+#write.csv(dat_t, "Project1/TransposedData.csv")
+
 #select only variables I want
 
-test <- dat_t[,grep("^[value.]", names(dat_t), value=TRUE)]
+#test <- dat_t[,grep("^[value.]", names(dat_t), value=TRUE)]
 
 testtv <- dat_t %>%
-  select(vars_select(names(dat_t), starts_with(c('value.', 'geo_label_city'), ignore.case = TRUE)))
+  select(vars_select(names(dat_t), starts_with(c('value.', 'geo_label_city', 'date_label'), ignore.case = TRUE)))
 ```
 
 ```{r}
@@ -52,20 +54,38 @@ sum(is.na(testtv %>% select(`value.Weapons in School`))) #120
 
 ```{r}
 #Read in the altitude data
-altitude <- read_xlsx("Project1/Top50CitiesElevation.xlsx")
-
-altitude %>% mutate(new_low = case_when(
-  `Corrected Low Feet` == "Sea Level" ~ 0,
-  TRUE ~ `Corrected Low Feet`
-))
+altitude <- read_xlsx("Project1/Top50CitiesElevation.xlsx") %>% 
+  rename(low_feet = `Corrected Low Feet`, high_feet = `High Feet`) %>% 
+  mutate(new_low = case_when(
+    low_feet == "Sea Level" ~ 0,
+    TRUE ~ as.numeric(low_feet)
+  )) %>% 
+  select(new_low, City, high_feet)
+# 
+# altitude %>% mutate(new_low = case_when(
+#   `Corrected Low Feet` == "Sea Level" ~ 0,
+#   TRUE ~ `Corrected Low Feet`
+#   )
+# )
 ```
 
 ```{r}
 #Select the specific vars that I actually want to examine in the analysis
+sel_vars <- testtv %>% 
+  select(geo_label_city, `value.Deaths from All Causes`, `value.Minority Population`, value.Suicide, `value.Severe Housing Problems`, `value.Weapons in School`, `value.Firearm Deaths`, date_label) %>% 
+  mutate(City = case_when(
+    geo_label_city == "New York" ~ "New York City",
+  TRUE ~ geo_label_city
+  ))
+
 
 ```
 
-
+```{r}
+#join altitude and selected variables
+joined <- sel_vars %>% 
+  left_join(altitude, by = "City")
+```
 
 
 
