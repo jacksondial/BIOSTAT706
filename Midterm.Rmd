@@ -7,14 +7,19 @@ editor_options:
   chunk_output_type: console
 ---
 
-```{r setup, include=FALSE}
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-library(tidyverse)
-library(tidyselect)
-library(readxl)
+library(tidyverse) #for a lot
+library(tidyselect) #for the select starts with
+library(readxl) #for reading altitude
+library(pander) #for pander
+#library(table1)
+library(bestglm) #for regsubsets
+library(car) #for boxCox
+library(olsrr) #for stepwise
 ```
 
 ```{r}
@@ -23,16 +28,17 @@ dat1 <- read_csv("Project1/BigCitiesHealth.csv")
 
 ```{r}
 #Transpose the data
-dat_t <- reshape(dat1, timevar = "metric_item_label", idvar = c('geo_label_city', 'date_label'), times = 'value', direction="wide")
+#dat_t2 <- reshape(dat1, timevar = "metric_item_label", idvar = c('geo_label_city', 'date_label'), times = 'value', direction="wide")
 
 #write.csv(dat_t, "Project1/TransposedData.csv")
-
+dat_t <- read_csv("Project1/TransposedData.csv")
 #select only variables I want
 
 #test <- dat_t[,grep("^[value.]", names(dat_t), value=TRUE)]
 
 testtv <- dat_t %>%
-  select(vars_select(names(dat_t), starts_with(c('value.', 'geo_label_city', 'date_label'), ignore.case = TRUE)))
+  select(vars_select(names(dat_t), starts_with(c('value.', 'geo_label_city', 'date_label'), ignore.case = TRUE))) #%>% 
+  #filter(`strata_race_label.Deaths from All Causes` == "All", `strata_sex_label.Deaths from All Causes` == "Both")
 ```
 
 ```{r}
@@ -76,9 +82,8 @@ sel_vars <- testtv %>%
   mutate(City = case_when(
     geo_label_city == "New York" ~ "New York City",
   TRUE ~ geo_label_city
-  ))
-
-
+  )) %>% 
+  filter(City != "U.S. Total")
 ```
 
 ```{r}
@@ -89,5 +94,111 @@ joined <- sel_vars %>%
 
 
 
+```{r}
+#explore
+ggplot(joined, aes(x = new_low, y = value.Suicide))+
+  geom_point(aes(col = as.factor(City)))
+
+```
+
+\pagebreak
+
+## Table 1
+
+```{r}
+tabledat_suicide <- joined %>% 
+  group_by(City) %>% 
+  summarise(avg_year = mean(value.Suicide))
+
+summary(tabledat_suicide$avg_year) %>% 
+  pander(caption = "5-Number Summary for Suicide (Averaged by Year)")
+
+tabledat_housing <- joined %>% 
+  group_by(City) %>% 
+  summarise(avg_year = mean(`value.Severe Housing Problems`))
+
+summary(tabledat_housing$avg_year) %>% 
+  pander(caption = "5- Number Summary for Severe Housing Problem Percentage (Averaged by Year)")
 
 
+
+tabledat_weapons <- joined %>% 
+  group_by(City) %>% 
+  summarise(avg_year = mean(`value.Weapons in School`))
+
+summary(tabledat_weapons$avg_year) %>% 
+  pander(caption = "5- Number Summary for Weapons in School Percentage (Averaged by Year)")
+
+
+
+tabledat_firearm <- joined %>% 
+  group_by(City) %>% 
+  summarise(avg_year = mean(`value.Firearm Deaths`))
+
+summary(tabledat_firearm$avg_year) %>% 
+  pander(caption = "5- Number Summary for Firearm Death Percentage (Averaged by Year)")
+
+
+
+tabledat_minority <- joined %>% 
+  group_by(City) %>% 
+  summarise(avg_year = mean(`value.Minority Population`))
+
+summary(tabledat_minority$avg_year) %>% 
+  pander(caption = "5- Number Summary for Minority Population Percentage (Averaged by Year)")
+```
+
+\pagebreak
+
+## Analysis
+
+```{r}
+fit1 <- lm(value.Suicide ~ new_low, data = joined)
+summary(fit1) %>% pander()
+```
+
+```{r}
+fit2 <- lm(value.Suicide ~ new_low + `value.Severe Housing Problems`, data = joined)
+summary(fit2) %>% pander()
+```
+
+```{r}
+#check for transformation?
+boxCox(fit2)
+```
+
+```{r}
+lm_for_reg <- lm(value.Suicide ~ new_low + `value.Severe Housing Problems` + `value.Weapons in School` + `value.Firearm Deaths`+ `value.Minority Population`, data = joined)
+summary(lm_for_reg) %>% pander()
+
+reg_sum <- summary(regsubsets(value.Suicide ~ new_low + `value.Severe Housing Problems` + `value.Weapons in School` + `value.Firearm Deaths`+ `value.Minority Population`, data = joined))
+
+plot(reg_sum$adjr2)
+adjr2_dp <- which.max(reg_sum$adjr2)
+points(adjr2_dp, reg_sum$adjr2[adjr2_dp], col =" red",cex =2, pch =20)
+
+plot(reg_sum$cp)
+cp_dp <- which.min(reg_sum$cp)
+points(cp_dp, reg_sum$cp[cp_dp], col =" red",cex =2, pch =20)
+
+plot(reg_sum$bic)
+bic_dp <- which.min(reg_sum$bic)
+points(bic_dp, reg_sum$bic[bic_dp], col =" red",cex =2, pch =20)
+```
+
+```{r}
+vif(lm_for_reg) %>% 
+  pander(caption = "Variance Inflation Factors")
+```
+
+```{r}
+stepwise <- ols_step_both_p(lm_for_reg, pent = .05, prem = .05)
+
+stepwise
+
+summary(lm(value.Suicide ~ `value.Minority Population` + new_low, data = joined)) %>% pander()
+final_fit <- lm(value.Suicide ~ `value.Minority Population` + new_low, data = joined)
+
+
+plot(final_fit, which = 1:5)
+```

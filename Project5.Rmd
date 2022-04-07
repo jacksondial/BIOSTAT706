@@ -1,0 +1,150 @@
+---
+title: "Project5"
+author: "Jackson Dial"
+date: "3/28/2022"
+output: word_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(tidyselect)
+library(readxl)
+```
+
+```{r}
+# dat_t <- read_csv("Project1/TransposedData.csv")
+# 
+# 
+# 
+# #, `strata_sex_label.Deaths from All Causes` == "Both"
+# 
+# testtv <- dat_t %>%
+#   select(vars_select(names(dat_t), starts_with(c('value.', 'geo_label_city', 'date_label', 'strata_race_label', 'strata_sex_label', 'strata_race_sex'), ignore.case = TRUE))) %>% 
+#   filter(`strata_race_label.Deaths from All Causes` == "All") %>% 
+#   select(value.Suicide, `value.Motor Vehicle Deaths`, `strata_sex_label.Suicide`, strata_race_sex_label.Suicide)
+
+#  separate(strata_race_sex_label.Suicide, into = c("race2", "sex2"), sep = ' ') %>% 
+
+
+megan_dat <- read_xlsx("Project1/megan_dat.xlsx") 
+megan_dat[megan_dat==""] <- NA
+
+
+final_dat <- megan_dat %>% 
+  filter(strata_race_label=="All") %>%
+  filter(strata_sex_label!="Both") %>%
+  filter(is.na(strata_race_sex_label)) %>%
+  filter(metric_item_label=="Motor Vehicle Deaths" | metric_item_label=="Suicide") %>%
+  select(metric_item_label,geo_label_citystate,value,date_label,strata_sex_label) %>%
+  pivot_wider(names_from = metric_item_label,values_from = value) %>% 
+  rename(mvd = `Motor Vehicle Deaths`,
+         sex = strata_sex_label)
+
+table(final_dat$sex)
+```
+
+
+```{r}
+fit1 <- aov(lm(Suicide ~ (as.factor(sex) + mvd), data = final_dat))
+summary(fit1)
+```
+
+After adjustment for Motor Vehicle Deaths, there is a significant difference in suicide rates between sex.
+
+```{r}
+1 - pf(1864.6, 1, 577)
+```
+
+```{r}
+ggplot(final_dat, aes(x = mvd, y = Suicide, color = as.factor(sex)))+
+  geom_point()+
+  theme(panel.grid.minor = element_blank())+
+  labs(x = "Motor Vehicle Deaths",
+       y = "Suicide Rates",
+       title = "Association between Suicide and MVD by Sex",
+       color = "Sex")
+
+ggplot(final_dat, aes(x = as.factor(sex), y = Suicide, fill = as.factor(sex)))+
+  geom_boxplot()+
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major.x = element_blank())+
+  labs(x = "Sex",
+       y = "Suicide Rates",
+       title = "Boxplots of Suicide by Sex",
+       fill = "Sex")
+
+ggplot(final_dat, aes(x = as.factor(sex), y = mvd, fill = as.factor(sex)))+
+  geom_boxplot()+
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major.x = element_blank())+
+  labs(x = "Sex",
+       y = "Motor Vehicle Deaths",
+       title = "Boxplots of MVD by Sex",
+       fill = "Sex")
+
+```
+
+### Shapiro test for assumptions of correlation test
+
+```{r}
+shapiro.test(final_dat$Suicide)
+shapiro.test(final_dat$mvd)
+```
+
+```{r}
+cor.test(final_dat$Suicide, final_dat$mvd, method = "pearson")
+```
+
+
+
+```{r}
+fit2 <- lm(Suicide ~ as.factor(sex) + mvd, data = final_dat)
+summary(fit2)
+
+plot(fit2)
+```
+
+### Just male
+
+```{r}
+male_dat <- final_dat %>% filter(sex == "Male")
+fit_male <- lm(Suicide ~ mvd, data = male_dat)
+summary(fit_male)
+```
+
+```{r}
+plot(fit_male)
+shapiro.test(male_dat$Suicide)
+shapiro.test(male_dat$mvd)
+
+```
+
+Since the shapiro wilks test concludes non-normality, I will perform log transformation:
+
+```{r}
+logged_dat <- male_dat %>% transmute(
+  suicide = log(Suicide),
+  mvd = log(mvd))
+
+fit_male_log <- lm(suicide ~ mvd, data = logged_dat)
+plot(fit_male_log)
+shapiro.test(logged_dat$suicide)
+shapiro.test(logged_dat$mvd)
+```
+
+
+Because we still have non-normality, I am going to run a boxCox test to see if log is the best transformation.
+
+```{r}
+library(car)
+boxCox(fit_male)
+```
+
+Since 0 is within the bounds, the log transformation was the optimal choice. Guess we just won't fully meet our assumptions.
+
