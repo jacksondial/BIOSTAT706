@@ -1,0 +1,50 @@
+---
+title: "final_latex"
+author: "Jackson Dial"
+date: "4/17/2022"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Chunk 1
+
+$$
+H_o: \text{The variables are indepedent of each other}
+$$
+
+$$
+H_a: \text{The two variables are not independent of each other}
+$$
+
+
+
+## Chunk 2
+
+$$
+H_o: \beta_1 = 0
+$$
+
+$$
+H_a: \beta_1 \neq 0
+$$
+## Chunk 3
+
+$$
+H_o: \beta_1 = 0
+$$
+
+$$
+H_a: \beta_1 \neq 0
+$$
+$$
+H_o: \beta_2 = 0
+$$
+
+$$
+H_a: \beta_2 \neq 0
+$$
+$\beta_1 \text{ and } \beta_2$
